@@ -1,0 +1,13 @@
+services:
+  penlight-dream-api:
+    build: .
+    image: penlight-dream-api:latest
+    container_name: penlight-dream-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # 覆盖 .env 里的 HOST=127.0.0.1。容器内必须绑定 0.0.0.0，否则宿主机的端口映射无法访问容器服务。
+      HOST: 0.0.0.0
+    ports:
+      - "8080:8080"

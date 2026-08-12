@@ -1,0 +1,14 @@
+target
+.git
+.gitignore
+.env
+.env.local
+.env.example
+*.log
+cache
+Dockerfile
+docker-compose.yml
+rust-toolchain.toml
+.github
+README.md
+LICENSE
