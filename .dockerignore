@@ -8,7 +8,6 @@ target
 cache
 Dockerfile
 docker-compose.yml
-rust-toolchain.toml
 .github
 README.md
 LICENSE

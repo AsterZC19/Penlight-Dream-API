@@ -4,6 +4,7 @@ FROM rust:1.97-alpine AS builder
 WORKDIR /app
 RUN apk add --no-cache gcc musl-dev
 COPY Cargo.toml Cargo.lock ./
+COPY rust-toolchain.toml ./
 COPY src ./src
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/app/target \

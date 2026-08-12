@@ -32,6 +32,22 @@ impl ServerConfig {
     pub fn enabled(&self) -> bool {
         !self.base.is_empty()
     }
+
+    /// A fully disabled config, used when the upstream server is not configured.
+    fn disabled() -> Self {
+        ServerConfig {
+            base: String::new(),
+            uid: String::new(),
+            uuid: String::new(),
+            client_version: String::new(),
+            unity_version: String::new(),
+            user_agent: String::new(),
+            client_platform: String::new(),
+            encryption_key: Vec::new(),
+            encryption_iv: Vec::new(),
+            package_url: String::new(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -122,18 +138,18 @@ impl Config {
         let iv_raw = to_string(env::var("GARUPA_ENCRYPTION_IVS").ok(), "");
 
         let server = if base.is_empty() {
-            ServerConfig {
-                base: String::new(),
-                uid: String::new(),
-                uuid: String::new(),
-                client_version: String::new(),
-                unity_version: String::new(),
-                user_agent: String::new(),
-                client_platform: String::new(),
-                encryption_key: Vec::new(),
-                encryption_iv: Vec::new(),
-                package_url: String::new(),
-            }
+            ServerConfig::disabled()
+        } else if uid.is_empty() && uuid.is_empty() && key_raw.is_empty() && iv_raw.is_empty() {
+            // Base URL configured but every credential field is empty, which is
+            // the state of a freshly copied .env.example. Disable the server with
+            // a warning instead of exiting, so a first `docker compose up` starts
+            // and /health responds rather than crash-looping on missing fields.
+            eprintln!(
+                "warning: GARUPA_SERVER_BASES is set but GARUPA_UIDS, GARUPA_UUIDS, \
+                 GARUPA_ENCRYPTION_KEYS and GARUPA_ENCRYPTION_IVS are empty; \
+                 the JP server is disabled"
+            );
+            ServerConfig::disabled()
         } else {
             if uid.is_empty() {
                 return Err(ConfigError::MissingField("GARUPA_UIDS"));
