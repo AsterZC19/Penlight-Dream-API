@@ -1,0 +1,24 @@
+[package]
+name = "penlight-dream-api"
+version = "0.1.0"
+edition = "2021"
+description = "Unofficial Garupa (BanG Dream! Girls Band Party!) third-party API server"
+license = "MIT"
+
+[dependencies]
+axum = "0.8"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal", "sync"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "gzip", "deflate", "brotli", "rustls-tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+aes = "0.8"
+cbc = { version = "0.1", features = ["alloc"] }
+base64 = "0.22"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tower-http = { version = "0.6", features = ["cors", "trace"] }
+dotenvy = "0.15"
+thiserror = "2"
+
+[profile.release]
+lto = true
