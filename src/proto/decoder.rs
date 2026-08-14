@@ -502,4 +502,109 @@ mod tests {
         assert_eq!(raw_field_count(&[]), 0);
         assert_eq!(raw_field_count(&[0x0a, 0x01, 0x00]), 1);
     }
+
+    // ============================================================================
+    // New user-data schemas (mission / login bonus / costume / character)
+    // Field numbers and wire types mirror the live probe dump of
+    // user/{uid}/mission, user/{uid}/loginbonus, user/{uid}/costume and
+    // user/{uid}/character, so these tests pin the inference in place.
+    // ============================================================================
+
+    /// Wraps `record` as the field-1 entries list of a list response.
+    fn wrap_entries(record: &[u8]) -> Vec<u8> {
+        let mut list = Vec::new();
+        list.push(0x0a);
+        push_varint(&mut list, record.len() as u64);
+        list.extend_from_slice(record);
+        list
+    }
+
+    #[test]
+    fn decodes_user_mission_list() {
+        use crate::proto::garupa_schema::USER_MISSION_LIST_SCHEMA;
+
+        // userId=136016593, missionId=2, missionType=1, progress=3,
+        // status="in_progress", missionValue=101 — the live dump shape.
+        let mut record = Vec::new();
+        record.push(0x08);
+        push_varint(&mut record, 136016593);
+        record.push(0x10);
+        push_varint(&mut record, 2);
+        record.push(0x18);
+        push_varint(&mut record, 1);
+        record.push(0x20);
+        push_varint(&mut record, 3);
+        record.push(0x2a);
+        push_varint(&mut record, 11);
+        record.extend_from_slice(b"in_progress");
+        record.push(0x30);
+        push_varint(&mut record, 101);
+
+        let value = decode(&wrap_entries(&record), &USER_MISSION_LIST_SCHEMA).unwrap();
+        let entry = &value["entries"][0];
+        assert_eq!(entry["userId"], 136016593);
+        assert_eq!(entry["missionId"], 2);
+        assert_eq!(entry["missionType"], 1);
+        assert_eq!(entry["progress"], 3);
+        assert_eq!(entry["status"], "in_progress");
+        assert_eq!(entry["missionValue"], 101);
+    }
+
+    #[test]
+    fn decodes_user_login_bonus_list() {
+        use crate::proto::garupa_schema::USER_LOGIN_BONUS_LIST_SCHEMA;
+
+        // userId=136016593, loginBonusId=523, receiveCount=3 — the live dump shape.
+        let mut record = Vec::new();
+        record.push(0x08);
+        push_varint(&mut record, 136016593);
+        record.push(0x10);
+        push_varint(&mut record, 523);
+        record.push(0x18);
+        push_varint(&mut record, 3);
+
+        let value = decode(&wrap_entries(&record), &USER_LOGIN_BONUS_LIST_SCHEMA).unwrap();
+        let entry = &value["entries"][0];
+        assert_eq!(entry["userId"], 136016593);
+        assert_eq!(entry["loginBonusId"], 523);
+        assert_eq!(entry["receiveCount"], 3);
+    }
+
+    #[test]
+    fn decodes_user_costume_list() {
+        use crate::proto::garupa_schema::USER_COSTUME_LIST_SCHEMA;
+
+        // userId=136016593, costumeId=26 — the live dump shape.
+        let mut record = Vec::new();
+        record.push(0x08);
+        push_varint(&mut record, 136016593);
+        record.push(0x10);
+        push_varint(&mut record, 26);
+
+        let value = decode(&wrap_entries(&record), &USER_COSTUME_LIST_SCHEMA).unwrap();
+        let entry = &value["entries"][0];
+        assert_eq!(entry["userId"], 136016593);
+        assert_eq!(entry["costumeId"], 26);
+    }
+
+    #[test]
+    fn decodes_user_character_list() {
+        use crate::proto::garupa_schema::USER_CHARACTER_LIST_SCHEMA;
+
+        // userId sits on field 2 (not 1), characterId on 3, exp on 5 — the live
+        // dump shape, deliberately different from the other user rows.
+        let mut record = Vec::new();
+        record.push(0x10);
+        push_varint(&mut record, 136016593);
+        record.push(0x18);
+        push_varint(&mut record, 1);
+        record.push(0x28);
+        push_varint(&mut record, 1608);
+
+        let value = decode(&wrap_entries(&record), &USER_CHARACTER_LIST_SCHEMA).unwrap();
+        let entry = &value["entries"][0];
+        assert_eq!(entry["userId"], 136016593);
+        assert_eq!(entry["characterId"], 1);
+        assert_eq!(entry["exp"], 1608);
+    }
 }

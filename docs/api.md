@@ -61,7 +61,9 @@ curl http://127.0.0.1:8080/api/en/music
 | --- | --- | --- |
 | GET | `/api/{server}/application` | 应用版本、服务器状态、各平台维护状态 |
 | GET | `/api/{server}/music` | 乐曲主数据 |
+| GET | `/api/{server}/music/{music_id}` | 单曲主数据 |
 | GET | `/api/{server}/characters` | 角色主数据，含人物设定、服装季、语音、Live2D 服装 |
+| GET | `/api/{server}/characters/{character_id}` | 单角色主数据 |
 | GET | `/api/{server}/bands` | 乐队主数据 |
 | GET | `/api/{server}/areas` | 区域主数据 |
 | GET | `/api/{server}/gacha` | 卡池主数据 |
@@ -89,6 +91,10 @@ curl http://127.0.0.1:8080/api/en/music
 | GET | `/api/{server}/user/presents` | 用户礼物与礼盒信息 |
 | GET | `/api/{server}/user/gacha` | 用户卡池记录 |
 | GET | `/api/{server}/user/episodes` | 用户剧情解锁 |
+| GET | `/api/{server}/user/missions` | 用户任务进度 |
+| GET | `/api/{server}/user/login-bonuses` | 用户登录奖励进度 |
+| GET | `/api/{server}/user/costumes` | 用户拥有的服装 |
+| GET | `/api/{server}/user/characters` | 用户角色亲密度 |
 
 ### 缓存
 

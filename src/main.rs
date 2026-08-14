@@ -792,6 +792,94 @@ mod live_probe {
         }
     }
 
+    /// Dumps the raw protobuf structure of the four new user endpoints and the
+    /// two master single-object endpoints (event/{id} probes as 404 and is not
+    /// routed), so their schemas can be derived.
+    #[tokio::test]
+    #[ignore = "live network probe"]
+    async fn probe_new_endpoints() {
+        dotenvy::from_path(".env").ok();
+        let config = Config::from_env().expect("config");
+        if !config.server.enabled() {
+            eprintln!("server disabled, skipping");
+            return;
+        }
+        let client = GarupaClient::new(&config).expect("client");
+        let cfg = &config.server;
+        let uid = &cfg.uid;
+
+        // user/mission: print the first 10 full records to inspect field semantics.
+        if let Ok(buf) = client.fetch(cfg, &format!("{}user/{uid}/mission", cfg.base)).await {
+            eprintln!("=== user/mission {} bytes ===", buf.len());
+            let records = crate::proto::decoder::dump_raw(&buf)
+                .as_array()
+                .cloned()
+                .unwrap_or_default();
+            for (i, record) in records.iter().take(10).enumerate() {
+                eprintln!("--- mission[{i}] ---");
+                eprintln!("{record}");
+            }
+            // Field-5 (status string) distribution across all records.
+            let mut statuses: std::collections::BTreeMap<String, usize> = Default::default();
+            for record in &records {
+                if let Some(s) = record
+                    .as_array()
+                    .and_then(|a| a.iter().find(|f| f.get("field").and_then(|v| v.as_u64()) == Some(5)))
+                    .and_then(|f| f.get("string").and_then(|v| v.as_str()))
+                {
+                    *statuses.entry(s.to_string()).or_default() += 1;
+                }
+            }
+            eprintln!("--- status distribution: {statuses:?}");
+        }
+
+        // user/costume and user/character: print first 5 records each.
+        if let Ok(buf) = client.fetch(cfg, &format!("{}user/{uid}/costume", cfg.base)).await {
+            eprintln!("=== user/costume {} bytes ===", buf.len());
+            for (i, record) in crate::proto::decoder::dump_raw(&buf)
+                .as_array()
+                .cloned()
+                .unwrap_or_default()
+                .into_iter()
+                .take(5)
+                .enumerate()
+            {
+                eprintln!("--- costume[{i}] ---");
+                eprintln!("{record}");
+            }
+        }
+        if let Ok(buf) = client.fetch(cfg, &format!("{}user/{uid}/character", cfg.base)).await {
+            eprintln!("=== user/character {} bytes ===", buf.len());
+            for (i, record) in crate::proto::decoder::dump_raw(&buf)
+                .as_array()
+                .cloned()
+                .unwrap_or_default()
+                .into_iter()
+                .take(5)
+                .enumerate()
+            {
+                eprintln!("--- character[{i}] ---");
+                eprintln!("{record}");
+            }
+        }
+        if let Ok(buf) = client.fetch(cfg, &format!("{}user/{uid}/loginbonus", cfg.base)).await {
+            eprintln!("=== user/loginbonus {} bytes ===", buf.len());
+            eprintln!("{}", crate::proto::decoder::dump_raw(&buf));
+        }
+
+        let cases = [
+            ("user/loginbonus", format!("{}user/{uid}/loginbonus", cfg.base)),
+            ("user/costume", format!("{}user/{uid}/costume", cfg.base)),
+            ("user/character", format!("{}user/{uid}/character", cfg.base)),
+            ("event/1", format!("{}event/1", cfg.base)),
+            ("music/1", format!("{}music/1", cfg.base)),
+            ("character/1", format!("{}character/1", cfg.base)),
+        ];
+        for (label, url) in cases {
+            probe_one(&client, cfg, label, &url).await;
+        }
+    }
+
     /// Renders a compact one-line summary of a decoded value.
     fn summarize(v: &serde_json::Value, depth: usize) -> String {        fn walk(v: &serde_json::Value, depth: usize, out: &mut Vec<String>) {
             match v {

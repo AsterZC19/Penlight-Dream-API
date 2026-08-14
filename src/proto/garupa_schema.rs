@@ -995,3 +995,66 @@ pub static USER_EPISODE_SCHEMA: Schema = Schema {
 pub static USER_EPISODE_LIST_SCHEMA: Schema = Schema {
     fields: &[(1, field("entries", ProtoType::Message(&USER_EPISODE_SCHEMA), true))],
 };
+
+// ============================================================================
+// User missions, login bonuses, costumes, characters
+// ============================================================================
+
+/// A mission progress row for the configured user. Field names are inferred
+/// from a live dump: field 3 is always 1 in the sampled data (likely a type or
+/// flag), field 4 is the current progress, field 5 the status string, and
+/// field 6 a constant value whose meaning is unconfirmed.
+pub static USER_MISSION_SCHEMA: Schema = Schema {
+    fields: &[
+        (1, field("userId", ProtoType::Long, false)),
+        (2, field("missionId", ProtoType::Int, false)),
+        (3, field("missionType", ProtoType::Int, false)),
+        (4, field("progress", ProtoType::Int, false)),
+        (5, field("status", ProtoType::String, false)),
+        (6, field("missionValue", ProtoType::Int, false)),
+    ],
+};
+
+pub static USER_MISSION_LIST_SCHEMA: Schema = Schema {
+    fields: &[(1, field("entries", ProtoType::Message(&USER_MISSION_SCHEMA), true))],
+};
+
+/// A login bonus progress row for the configured user. Field 3 is the number
+/// of rewards received so far (3 or 1 in the live dump).
+pub static USER_LOGIN_BONUS_SCHEMA: Schema = Schema {
+    fields: &[
+        (1, field("userId", ProtoType::Long, false)),
+        (2, field("loginBonusId", ProtoType::Int, false)),
+        (3, field("receiveCount", ProtoType::Int, false)),
+    ],
+};
+
+pub static USER_LOGIN_BONUS_LIST_SCHEMA: Schema = Schema {
+    fields: &[(1, field("entries", ProtoType::Message(&USER_LOGIN_BONUS_SCHEMA), true))],
+};
+
+/// A costume owned by the configured user.
+pub static USER_COSTUME_SCHEMA: Schema = Schema {
+    fields: &[
+        (1, field("userId", ProtoType::Long, false)),
+        (2, field("costumeId", ProtoType::Int, false)),
+    ],
+};
+
+pub static USER_COSTUME_LIST_SCHEMA: Schema = Schema {
+    fields: &[(1, field("entries", ProtoType::Message(&USER_COSTUME_SCHEMA), true))],
+};
+
+/// A character affinity row for the configured user. Note the user id sits on
+/// field 2, not field 1, per the live dump; field 5 is the accumulated exp.
+pub static USER_CHARACTER_SCHEMA: Schema = Schema {
+    fields: &[
+        (2, field("userId", ProtoType::Long, false)),
+        (3, field("characterId", ProtoType::Int, false)),
+        (5, field("exp", ProtoType::Int, false)),
+    ],
+};
+
+pub static USER_CHARACTER_LIST_SCHEMA: Schema = Schema {
+    fields: &[(1, field("entries", ProtoType::Message(&USER_CHARACTER_SCHEMA), true))],
+};

@@ -290,6 +290,30 @@ impl GarupaClient {
         format!("{}user/{}/episode", cfg.base, cfg.uid)
     }
 
+    pub fn user_mission_url(&self, cfg: &ServerConfig) -> String {
+        format!("{}user/{}/mission", cfg.base, cfg.uid)
+    }
+
+    pub fn user_login_bonus_url(&self, cfg: &ServerConfig) -> String {
+        format!("{}user/{}/loginbonus", cfg.base, cfg.uid)
+    }
+
+    pub fn user_costume_url(&self, cfg: &ServerConfig) -> String {
+        format!("{}user/{}/costume", cfg.base, cfg.uid)
+    }
+
+    pub fn user_character_url(&self, cfg: &ServerConfig) -> String {
+        format!("{}user/{}/character", cfg.base, cfg.uid)
+    }
+
+    pub fn music_single_url(&self, cfg: &ServerConfig, music_id: i64) -> String {
+        format!("{}music/{music_id}", cfg.base)
+    }
+
+    pub fn character_single_url(&self, cfg: &ServerConfig, character_id: i64) -> String {
+        format!("{}character/{character_id}", cfg.base)
+    }
+
     pub fn event_ranking_url(&self, cfg: &ServerConfig, event_id: i64, event_type: &str, mid: Option<i64>) -> String {
         let segment = event_type_to_url_segment(event_type);
         let mut url = format!("{}user/{}/event/{}/{}/ranking", cfg.base, cfg.uid, event_id, segment);

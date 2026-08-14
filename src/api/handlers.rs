@@ -20,14 +20,15 @@ use crate::config::ServerConfig;
 use crate::error::{AppError, AppResult};
 use crate::proto::decoder::decode;
 use crate::proto::garupa_schema::{
-    APPLICATION_SCHEMA, AREA_LIST_SCHEMA, BAND_LIST_SCHEMA, CHARACTER_LIST_SCHEMA,
+    APPLICATION_SCHEMA, AREA_LIST_SCHEMA, BAND_LIST_SCHEMA, CHARACTER_LIST_SCHEMA, CHARACTER_SCHEMA,
     COSTUME_LIST_SCHEMA, EVENT_TYPE_SCHEMAS, GACHA_LIST_SCHEMA, ITEM_LIST_SCHEMA,
     LOGIN_BONUS_LIST_SCHEMA, MASTER_EVENT_LIST_SCHEMA, MASTER_MONTHLY_RANKING_LIST_SCHEMA,
-    MUSIC_LIST_SCHEMA, SHOP_LIST_SCHEMA, SITUATION_LIST_SCHEMA, SKILL_LIST_SCHEMA, STAMP_LIST_SCHEMA,
-    USER_AREA_LIST_SCHEMA, USER_DECK_LIST_SCHEMA, USER_EPISODE_LIST_SCHEMA,
-    USER_GACHA_LIST_SCHEMA, USER_ITEM_LIST_SCHEMA, USER_PRESENT_LIST_SCHEMA,
-    USER_PROFILE_RESPONSE_SCHEMA, USER_SITUATION_LIST_SCHEMA, USER_STAMP_LIST_SCHEMA,
-    USER_TITLE_SCHEMA, USER_MONTHLY_RANKING_RANKING_RESPONSE_SCHEMA,
+    MUSIC_LIST_SCHEMA, MUSIC_SCHEMA, SHOP_LIST_SCHEMA, SITUATION_LIST_SCHEMA, SKILL_LIST_SCHEMA, STAMP_LIST_SCHEMA,
+    USER_AREA_LIST_SCHEMA, USER_CHARACTER_LIST_SCHEMA, USER_COSTUME_LIST_SCHEMA,
+    USER_DECK_LIST_SCHEMA, USER_EPISODE_LIST_SCHEMA, USER_GACHA_LIST_SCHEMA,
+    USER_ITEM_LIST_SCHEMA, USER_LOGIN_BONUS_LIST_SCHEMA, USER_MISSION_LIST_SCHEMA,
+    USER_PRESENT_LIST_SCHEMA, USER_PROFILE_RESPONSE_SCHEMA, USER_SITUATION_LIST_SCHEMA,
+    USER_STAMP_LIST_SCHEMA, USER_TITLE_SCHEMA, USER_MONTHLY_RANKING_RANKING_RESPONSE_SCHEMA,
 };
 use crate::proto::schema::Schema;
 
@@ -380,10 +381,34 @@ pub async fn music_master(State(state): State<SharedState>) -> AppResult<Respons
     master_list(&state, "music-master", &state.client.music_master_url(cfg), &MUSIC_LIST_SCHEMA).await
 }
 
+/// GET /api/{server}/music/{music_id} — a single music master entry. The
+/// upstream `music/{id}` response is a bare object (verified by live probe),
+/// not the `entries` wrapper the list endpoint uses.
+pub async fn music_single(State(state): State<SharedState>, Path((_server, music_id)): Path<(String, i64)>) -> AppResult<Response> {
+    let cfg = jp_config(&state)?;
+    if music_id < 1 {
+        return Err(AppError::bad_request("musicId must be >= 1"));
+    }
+    let key = format!("music-single:{music_id}");
+    master_fetch(&state, &key, &state.client.music_single_url(cfg, music_id), &MUSIC_SCHEMA).await
+}
+
 /// GET /api/{server}/characters — character master list.
 pub async fn character_master(State(state): State<SharedState>) -> AppResult<Response> {
     let cfg = jp_config(&state)?;
     master_list(&state, "character-master", &state.client.character_master_url(cfg), &CHARACTER_LIST_SCHEMA).await
+}
+
+/// GET /api/{server}/characters/{character_id} — a single character master
+/// entry. The upstream `character/{id}` response is a bare object (verified by
+/// live probe), not the `entries` wrapper the list endpoint uses.
+pub async fn character_single(State(state): State<SharedState>, Path((_server, character_id)): Path<(String, i64)>) -> AppResult<Response> {
+    let cfg = jp_config(&state)?;
+    if character_id < 1 {
+        return Err(AppError::bad_request("characterId must be >= 1"));
+    }
+    let key = format!("character-single:{character_id}");
+    master_fetch(&state, &key, &state.client.character_single_url(cfg, character_id), &CHARACTER_SCHEMA).await
 }
 
 /// GET /api/{server}/bands — band master list.
@@ -519,6 +544,34 @@ pub async fn user_episodes(State(state): State<SharedState>) -> AppResult<Respon
     let cfg = jp_config(&state)?;
     let key = format!("user-episodes:{}", cfg.uid);
     user_list(&state, &key, &state.client.user_episode_url(cfg), &USER_EPISODE_LIST_SCHEMA).await
+}
+
+/// GET /api/{server}/user/missions — the configured user's mission progress.
+pub async fn user_missions(State(state): State<SharedState>) -> AppResult<Response> {
+    let cfg = jp_config(&state)?;
+    let key = format!("user-missions:{}", cfg.uid);
+    user_list(&state, &key, &state.client.user_mission_url(cfg), &USER_MISSION_LIST_SCHEMA).await
+}
+
+/// GET /api/{server}/user/login-bonuses — the configured user's login bonus progress.
+pub async fn user_login_bonuses(State(state): State<SharedState>) -> AppResult<Response> {
+    let cfg = jp_config(&state)?;
+    let key = format!("user-login-bonuses:{}", cfg.uid);
+    user_list(&state, &key, &state.client.user_login_bonus_url(cfg), &USER_LOGIN_BONUS_LIST_SCHEMA).await
+}
+
+/// GET /api/{server}/user/costumes — the configured user's owned costumes.
+pub async fn user_costumes(State(state): State<SharedState>) -> AppResult<Response> {
+    let cfg = jp_config(&state)?;
+    let key = format!("user-costumes:{}", cfg.uid);
+    user_list(&state, &key, &state.client.user_costume_url(cfg), &USER_COSTUME_LIST_SCHEMA).await
+}
+
+/// GET /api/{server}/user/characters — the configured user's character affinity.
+pub async fn user_characters(State(state): State<SharedState>) -> AppResult<Response> {
+    let cfg = jp_config(&state)?;
+    let key = format!("user-characters:{}", cfg.uid);
+    user_list(&state, &key, &state.client.user_character_url(cfg), &USER_CHARACTER_LIST_SCHEMA).await
 }
 
 // ============================================================================
