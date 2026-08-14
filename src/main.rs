@@ -93,7 +93,7 @@ async fn shutdown_signal() {
 mod live_probe {
     use crate::client::GarupaClient;
     use crate::config::Config;
-    use crate::proto::decoder::{dump_raw, first_entry_dump, top_field_union};
+    use crate::proto::decoder::{dump_raw, entries_containing_fields, first_entry_dump, top_field_union};
 
     const MASTER_CANDIDATES: &[&str] = &[
         "application",
@@ -559,6 +559,46 @@ mod live_probe {
                 eprintln!("{}", top_field_union(&buf, 3));
             }
             Err(e) => eprintln!("FAIL: {e}"),
+        }
+    }
+
+    /// Dumps raw entries exposing fields missing from the ported schemas:
+    /// band field 12, gacha fields 12/42, and the rare situation fields 4/15.
+    #[tokio::test]
+    #[ignore = "live network probe"]
+    async fn dump_missing_fields() {
+        dotenvy::from_path(".env").ok();
+        let config = Config::from_env().expect("config");
+        if !config.server.enabled() {
+            eprintln!("server disabled, skipping");
+            return;
+        }
+        let client = GarupaClient::new(&config).expect("client");
+        let cfg = &config.server;
+
+        if let Ok(buf) = client.fetch(cfg, &format!("{}band", cfg.base)).await {
+            eprintln!("--- band first entry (field 12) ---");
+            if let Some(e) = first_entry_dump(&buf) {
+                eprintln!("{e}");
+            }
+        }
+
+        if let Ok(buf) = client.fetch(cfg, &format!("{}gacha", cfg.base)).await {
+            eprintln!("--- gacha first entry (fields 12/42 only) ---");
+            if let Some(e) = first_entry_dump(&buf) {
+                for f in e.as_array().map(|a| a.iter().filter(|f| {
+                    f.get("field").and_then(|v| v.as_u64()).map(|n| n == 12 || n == 42).unwrap_or(false)
+                }).collect::<Vec<_>>()).unwrap_or_default() {
+                    eprintln!("{f}");
+                }
+            }
+        }
+
+        if let Ok(buf) = client.fetch(cfg, &format!("{}situation", cfg.base)).await {
+            eprintln!("--- situation entries with rare fields 4/15 ---");
+            for e in entries_containing_fields(&buf, &[4, 15], 4) {
+                eprintln!("{e}");
+            }
         }
     }
 

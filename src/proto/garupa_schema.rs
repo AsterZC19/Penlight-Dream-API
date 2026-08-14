@@ -724,6 +724,60 @@ pub static SITUATION_LEVEL_SCHEMA: Schema = Schema {
     ],
 };
 
+/// Reward granted by a card episode or special training. Field 1 is the item id
+/// (absent for pure-currency rewards like stars); field 4 is an unconfirmed
+/// sequence marker that is always 1 in live dumps.
+pub static SITUATION_EPISODE_REWARD_SCHEMA: Schema = Schema {
+    fields: &[
+        (1, field("rewardId", ProtoType::Int, false)),
+        (2, field("rewardType", ProtoType::String, false)),
+        (3, field("rewardQuantity", ProtoType::Int, false)),
+        (4, field("seq", ProtoType::Int, false)),
+    ],
+};
+
+pub static SITUATION_EPISODE_REWARD_LIST_SCHEMA: Schema = Schema {
+    fields: &[(1, field("entries", ProtoType::Message(&SITUATION_EPISODE_REWARD_SCHEMA), true))],
+};
+
+/// A card episode (standard or memorial). Fields 5-7 are the stat bonuses the
+/// episode grants; fields 9 and 10 are its item and star reward lists.
+pub static SITUATION_EPISODE_SCHEMA: Schema = Schema {
+    fields: &[
+        (1, field("episodeId", ProtoType::Int, false)),
+        (2, field("episodeType", ProtoType::String, false)),
+        (3, field("episodeNumber", ProtoType::Int, false)),
+        (4, field("assetBundleName", ProtoType::String, false)),
+        (5, field("bonusPerformance", ProtoType::Int, false)),
+        (6, field("bonusTechnique", ProtoType::Int, false)),
+        (7, field("bonusVisual", ProtoType::Int, false)),
+        (8, field("maxLevel", ProtoType::Int, false)),
+        (9, field("rewards", ProtoType::Message(&SITUATION_EPISODE_REWARD_LIST_SCHEMA), false)),
+        (10, field("starRewards", ProtoType::Message(&SITUATION_EPISODE_REWARD_LIST_SCHEMA), false)),
+        (11, field("episodeName", ProtoType::String, false)),
+        (12, field("releaseFlg", ProtoType::Int, false)),
+    ],
+};
+
+pub static SITUATION_EPISODE_LIST_SCHEMA: Schema = Schema {
+    fields: &[(1, field("entries", ProtoType::Message(&SITUATION_EPISODE_SCHEMA), true))],
+};
+
+/// Special-training (特訓) data present on cards that can be trained. Fields 4-6
+/// are the stat bonuses granted and field 7 the item rewards; the official field
+/// names are inferred from a live dump.
+pub static SITUATION_TRAINING_SCHEMA: Schema = Schema {
+    fields: &[
+        (1, field("situationId", ProtoType::Int, false)),
+        (2, field("characterIndex", ProtoType::Int, false)),
+        (3, field("level", ProtoType::Int, false)),
+        (4, field("performance", ProtoType::Int, false)),
+        (5, field("technique", ProtoType::Int, false)),
+        (6, field("visual", ProtoType::Int, false)),
+        (7, field("rewards", ProtoType::Message(&SITUATION_EPISODE_REWARD_LIST_SCHEMA), false)),
+    ],
+};
+
 pub static SITUATION_SCHEMA: Schema = Schema {
     fields: &[
         (1, field("situationId", ProtoType::Int, false)),
@@ -736,6 +790,8 @@ pub static SITUATION_SCHEMA: Schema = Schema {
         (11, field("maxLevel", ProtoType::Int, false)),
         (12, field("resourceName", ProtoType::String, false)),
         (13, field("sdAssetName", ProtoType::String, false)),
+        (14, field("episodes", ProtoType::Message(&SITUATION_EPISODE_LIST_SCHEMA), false)),
+        (15, field("training", ProtoType::Message(&SITUATION_TRAINING_SCHEMA), false)),
         (16, field("characterIndex", ProtoType::Int, false)),
         (17, field("releaseAt", ProtoType::Long, false)),
         (18, field("skillId2", ProtoType::Int, false)),

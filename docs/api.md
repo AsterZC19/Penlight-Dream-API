@@ -71,7 +71,7 @@ curl http://127.0.0.1:8080/api/en/music
 | GET | `/api/{server}/login-bonuses` | 登录奖励主数据 |
 | GET | `/api/{server}/costumes` | 服装主数据 |
 | GET | `/api/{server}/shops` | 商店主数据 |
-| GET | `/api/{server}/cards` | 卡主数据，含各等级能力值与技能引用 |
+| GET | `/api/{server}/cards` | 卡主数据，含各等级能力值、技能引用、卡面剧情（`episodes`）与特训数据（`training`） |
 
 ### 用户数据
 

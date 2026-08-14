@@ -330,6 +330,28 @@ pub fn top_field_union(buf: &[u8], sample: usize) -> Value {
         .collect()
 }
 
+/// Test-only helper that dumps the first `limit` list-wrapper entries containing
+/// any of the given field numbers. Used to identify rare fields that a schema is
+/// missing; the raw bytes of each matching entry are decoded recursively.
+#[cfg(test)]
+pub fn entries_containing_fields(buf: &[u8], fields: &[u32], limit: usize) -> Vec<Value> {
+    let mut out = Vec::new();
+    for item in parse_raw_fields(buf)
+        .iter()
+        .filter(|f| f.field == 1 && matches!(f.data, RawData::Bytes(_)))
+    {
+        if out.len() >= limit {
+            break;
+        }
+        if let RawData::Bytes(b) = &item.data {
+            if parse_raw_fields(b).iter().any(|nf| fields.contains(&nf.field)) {
+                out.push(dump_raw(b));
+            }
+        }
+    }
+    out
+}
+
 /// Counts the raw protobuf fields in a buffer. Kept as a discovery probe helper
 /// for live endpoint scans; no handler relies on it now that list endpoints
 /// pass through whatever the game returns.
