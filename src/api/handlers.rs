@@ -2,7 +2,7 @@
 //! endpoint, decodes the protobuf, maps it to a response model, and serves it
 //! through the TTL cache.
 
-use std::sync::OnceLock;
+use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 use axum::body::Body;
@@ -33,6 +33,20 @@ use crate::proto::schema::Schema;
 
 /// Records the process start time for the health uptime field.
 static START_TIME: OnceLock<Instant> = OnceLock::new();
+
+/// Live JP availability snapshot, cached so frequent health probes do not
+/// hammer the upstream server with one `/application` call per request.
+#[derive(Clone)]
+struct HealthSnapshot {
+    at: Instant,
+    available: bool,
+    client_version: String,
+}
+
+/// How long a health snapshot is reused before the upstream is re-checked.
+const HEALTH_SNAPSHOT_TTL: Duration = Duration::from_secs(10);
+
+static HEALTH_SNAPSHOT: OnceLock<Mutex<Option<HealthSnapshot>>> = OnceLock::new();
 
 /// Returns the JP server config, or a 404 when it is not configured.
 fn jp_config(state: &SharedState) -> AppResult<&ServerConfig> {
@@ -123,7 +137,8 @@ async fn user_fetch(state: &SharedState, key: &str, url: &str, schema: &Schema) 
 // Server metadata
 // ============================================================================
 
-/// GET /servers — lists the configured server, omitting credentials.
+/// GET /servers — lists the configured server, omitting credentials and the
+/// player UID so the endpoint can stay unauthenticated.
 pub async fn servers(State(state): State<SharedState>) -> Json<Value> {
     let cfg = &state.config.server;
     if !cfg.enabled() {
@@ -133,22 +148,40 @@ pub async fn servers(State(state): State<SharedState>) -> Json<Value> {
         "index": 0,
         "name": "jp",
         "base": cfg.base,
-        "uid": cfg.uid,
     })]))
 }
 
-/// GET /health — process health envelope plus live JP availability check.
+/// GET /health — process health envelope plus live JP availability check,
+/// with the upstream probe cached for a short window.
 pub async fn health(State(state): State<SharedState>) -> Json<Value> {
     let cfg = &state.config.server;
-    let available = if cfg.enabled() {
-        state.client.check_health(cfg).await
-    } else {
-        false
-    };
-    let client_version = if cfg.enabled() {
-        state.client.client_version(cfg).await
-    } else {
-        String::new()
+    let (available, client_version) = {
+        // Clone the snapshot out so the mutex guard is dropped before any
+        // `.await` below; a `MutexGuard` is not `Send`.
+        let snapshot = HEALTH_SNAPSHOT.get_or_init(|| Mutex::new(None)).lock().unwrap().clone();
+        match snapshot {
+            Some(s) if s.at.elapsed() < HEALTH_SNAPSHOT_TTL => (s.available, s.client_version),
+            _ => {
+                let available = if cfg.enabled() {
+                    state.client.check_health(cfg).await
+                } else {
+                    false
+                };
+                let client_version = if cfg.enabled() {
+                    state.client.client_version(cfg).await
+                } else {
+                    String::new()
+                };
+                if let Ok(mut guard) = HEALTH_SNAPSHOT.get_or_init(|| Mutex::new(None)).lock() {
+                    *guard = Some(HealthSnapshot {
+                        at: Instant::now(),
+                        available,
+                        client_version: client_version.clone(),
+                    });
+                }
+                (available, client_version)
+            }
+        }
     };
     let uptime = START_TIME.get_or_init(Instant::now).elapsed().as_secs();
     Json(json!({

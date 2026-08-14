@@ -724,8 +724,8 @@ pub static SITUATION_LEVEL_SCHEMA: Schema = Schema {
     ],
 };
 
-/// Reward granted by a card episode or special training. Field 1 is the item id
-/// (absent for pure-currency rewards like stars); field 4 is an unconfirmed
+/// Reward granted by a card episode or special training. Field 1 is the item
+/// id, absent for pure-currency rewards like stars; field 4 is an unconfirmed
 /// sequence marker that is always 1 in live dumps.
 pub static SITUATION_EPISODE_REWARD_SCHEMA: Schema = Schema {
     fields: &[
@@ -740,8 +740,9 @@ pub static SITUATION_EPISODE_REWARD_LIST_SCHEMA: Schema = Schema {
     fields: &[(1, field("entries", ProtoType::Message(&SITUATION_EPISODE_REWARD_SCHEMA), true))],
 };
 
-/// A card episode (standard or memorial). Fields 5-7 are the stat bonuses the
-/// episode grants; fields 9 and 10 are its item and star reward lists.
+/// A card episode, either standard or memorial. Fields 5-7 are the stat
+/// bonuses the episode grants; fields 9 and 10 are its item and star reward
+/// lists.
 pub static SITUATION_EPISODE_SCHEMA: Schema = Schema {
     fields: &[
         (1, field("episodeId", ProtoType::Int, false)),
@@ -763,9 +764,9 @@ pub static SITUATION_EPISODE_LIST_SCHEMA: Schema = Schema {
     fields: &[(1, field("entries", ProtoType::Message(&SITUATION_EPISODE_SCHEMA), true))],
 };
 
-/// Special-training (特訓) data present on cards that can be trained. Fields 4-6
-/// are the stat bonuses granted and field 7 the item rewards; the official field
-/// names are inferred from a live dump.
+/// Special-training data present on cards that can be trained. Fields 4-6
+/// are the stat bonuses granted and field 7 the item rewards; the official
+/// field names are inferred from a live dump.
 pub static SITUATION_TRAINING_SCHEMA: Schema = Schema {
     fields: &[
         (1, field("situationId", ProtoType::Int, false)),

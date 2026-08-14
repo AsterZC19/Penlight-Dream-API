@@ -34,7 +34,7 @@ curl http://127.0.0.1:8080/api/en/music
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| GET | `/servers` | 已配置的服务器列表，不含密钥 |
+| GET | `/servers` | 已配置的服务器列表，不含密钥与 UID |
 | GET | `/health` | 进程健康检查，含版本、运行时长、日服可用性与客户端版本 |
 | GET | `/version` | 自动探测到的游戏客户端版本 |
 | GET | `/image/{server}/{asset_kind}/{asset_id}` | 静态资源占位路由 |
@@ -71,7 +71,7 @@ curl http://127.0.0.1:8080/api/en/music
 | GET | `/api/{server}/login-bonuses` | 登录奖励主数据 |
 | GET | `/api/{server}/costumes` | 服装主数据 |
 | GET | `/api/{server}/shops` | 商店主数据 |
-| GET | `/api/{server}/cards` | 卡主数据，含各等级能力值、技能引用、卡面剧情（`episodes`）与特训数据（`training`） |
+| GET | `/api/{server}/cards` | 卡主数据，含各等级能力值、技能引用、`episodes` 卡面剧情与 `training` 特训数据 |
 
 ### 用户数据
 

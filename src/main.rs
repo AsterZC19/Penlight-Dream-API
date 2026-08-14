@@ -563,7 +563,8 @@ mod live_probe {
     }
 
     /// Dumps raw entries exposing fields missing from the ported schemas:
-    /// band field 12, gacha fields 12/42, and the rare situation fields 4/15.
+    /// band field 12, gacha fields 12/42, and the rare situation fields 14/15
+    /// for episodes and training.
     #[tokio::test]
     #[ignore = "live network probe"]
     async fn dump_missing_fields() {
@@ -595,8 +596,8 @@ mod live_probe {
         }
 
         if let Ok(buf) = client.fetch(cfg, &format!("{}situation", cfg.base)).await {
-            eprintln!("--- situation entries with rare fields 4/15 ---");
-            for e in entries_containing_fields(&buf, &[4, 15], 4) {
+            eprintln!("--- situation entries with rare fields 14/15 ---");
+            for e in entries_containing_fields(&buf, &[14, 15], 4) {
                 eprintln!("{e}");
             }
         }

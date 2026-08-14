@@ -8,8 +8,9 @@ use crate::error::AppError;
 
 /// A minimal in-memory TTL cache for serialized JSON responses.
 ///
-/// Expired entries are skipped on read and replaced on write. A
-/// background task is not needed for a server of this size.
+/// Expired entries are evicted lazily on read and replaced on write, so
+/// user-controlled keys such as monthly/event ids cannot grow the map
+/// unboundedly. A background task is not needed for a server of this size.
 pub struct Cache {
     inner: RwLock<HashMap<String, Entry>>,
 }
@@ -24,15 +25,27 @@ impl Cache {
         Self { inner: RwLock::new(HashMap::new()) }
     }
 
-    /// Returns the cached body if present and not expired.
+    /// Returns the cached body if present and not expired, evicting the
+    /// entry when it has expired.
     pub fn get(&self, key: &str) -> Option<String> {
-        let map = self.inner.read().ok()?;
-        let entry = map.get(key)?;
-        if Instant::now() < entry.expires_at {
-            Some(entry.body.clone())
-        } else {
-            None
+        {
+            let map = self.inner.read().ok()?;
+            if let Some(entry) = map.get(key) {
+                if Instant::now() < entry.expires_at {
+                    return Some(entry.body.clone());
+                }
+            }
         }
+        // Expired: drop the read lock, then remove under the write lock so a
+        // concurrent writer cannot be starved by a long read hold.
+        if let Ok(mut map) = self.inner.write() {
+            if let Some(entry) = map.get(key) {
+                if Instant::now() >= entry.expires_at {
+                    map.remove(key);
+                }
+            }
+        }
+        None
     }
 
     /// Stores a body with the given TTL.
@@ -111,6 +124,28 @@ impl Coalescer {
 mod tests {
     use super::*;
     use std::sync::atomic::{AtomicU32, Ordering};
+
+    /// An expired entry must be dropped from the map on read so
+    /// user-controlled keys cannot grow the cache unboundedly.
+    #[test]
+    fn evicts_expired_entries_on_read() {
+        let cache = Cache::new();
+        cache.set("k", "v", Duration::from_millis(1));
+        assert_eq!(cache.get("k").as_deref(), Some("v"));
+        assert_eq!(cache.len(), 1);
+        std::thread::sleep(Duration::from_millis(10));
+        assert_eq!(cache.get("k"), None);
+        assert_eq!(cache.len(), 0, "expired entry evicted lazily");
+    }
+
+    /// A live entry is served and kept in the map.
+    #[test]
+    fn serves_live_entries() {
+        let cache = Cache::new();
+        cache.set("k", "v", Duration::from_secs(60));
+        assert_eq!(cache.get("k").as_deref(), Some("v"));
+        assert_eq!(cache.len(), 1);
+    }
 
     /// A burst of concurrent callers for one key must run the fetch once, all
     /// receive the same result, and the in-flight slot is cleaned up after.

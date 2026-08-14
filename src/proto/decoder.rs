@@ -363,7 +363,7 @@ pub fn raw_field_count(buf: &[u8]) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::proto::garupa_schema::RANKING_USER_LIST_SCHEMA;
+    use crate::proto::garupa_schema::{RANKING_USER_LIST_SCHEMA, SITUATION_LIST_SCHEMA};
     /// Test helper that appends a base-128 varint to a buffer.
     fn push_varint(buf: &mut Vec<u8>, mut value: u64) {
         loop {
@@ -384,6 +384,79 @@ mod tests {
         assert_eq!(read_varint(&[0x2a], 0), Some((42, 1)));
         assert_eq!(read_varint(&[0xac, 0x02], 0), Some((300, 2)));
         assert_eq!(read_varint(&[0x80, 0x01], 0), Some((128, 2)));
+    }
+
+    /// Decodes a card with the new episodes and training branches of
+    /// `SITUATION_SCHEMA`, fields 14 and 15, including nested reward lists.
+    #[test]
+    fn decodes_situation_episodes_and_training() {
+        // One reward: rewardId=5001, rewardType="item", rewardQuantity=2, seq=1.
+        let mut reward = Vec::new();
+        reward.extend_from_slice(&[0x08, 0x89, 0x27]);
+        reward.extend_from_slice(&[0x12, 4]);
+        reward.extend_from_slice(b"item");
+        reward.extend_from_slice(&[0x18, 0x02]);
+        reward.extend_from_slice(&[0x20, 0x01]);
+
+        // Reward list wrapping the reward.
+        let mut reward_list = Vec::new();
+        reward_list.push(0x0a);
+        push_varint(&mut reward_list, reward.len() as u64);
+        reward_list.extend_from_slice(&reward);
+
+        // One episode: episodeId=1001, episodeType="standard", rewards=<list>.
+        let mut episode = Vec::new();
+        episode.extend_from_slice(&[0x08, 0xe9, 0x07]);
+        episode.extend_from_slice(&[0x12, 8]);
+        episode.extend_from_slice(b"standard");
+        episode.push(0x4a);
+        push_varint(&mut episode, reward_list.len() as u64);
+        episode.extend_from_slice(&reward_list);
+
+        // Episode list wrapping the episode.
+        let mut episode_list = Vec::new();
+        episode_list.push(0x0a);
+        push_varint(&mut episode_list, episode.len() as u64);
+        episode_list.extend_from_slice(&episode);
+
+        // Training: situationId=5, level=3, rewards=<list>.
+        let mut training = Vec::new();
+        training.extend_from_slice(&[0x08, 0x05]);
+        training.extend_from_slice(&[0x18, 0x03]);
+        training.push(0x3a);
+        push_varint(&mut training, reward_list.len() as u64);
+        training.extend_from_slice(&reward_list);
+
+        // Situation entry: situationId=1, episodes=<list>, training=<training>.
+        let mut situation = Vec::new();
+        situation.push(0x08);
+        situation.push(0x01);
+        situation.push(0x72);
+        push_varint(&mut situation, episode_list.len() as u64);
+        situation.extend_from_slice(&episode_list);
+        situation.push(0x7a);
+        push_varint(&mut situation, training.len() as u64);
+        situation.extend_from_slice(&training);
+
+        // List wrapper: field 1 holds the entries with wire type 2.
+        let mut list = Vec::new();
+        list.push(0x0a);
+        push_varint(&mut list, situation.len() as u64);
+        list.extend_from_slice(&situation);
+
+        let value = decode(&list, &SITUATION_LIST_SCHEMA).unwrap();
+        let entry = &value["entries"][0];
+        assert_eq!(entry["situationId"], 1);
+        let episodes = &entry["episodes"]["entries"];
+        assert_eq!(episodes.as_array().unwrap().len(), 1);
+        assert_eq!(episodes[0]["episodeId"], 1001);
+        assert_eq!(episodes[0]["episodeType"], "standard");
+        assert_eq!(episodes[0]["rewards"]["entries"][0]["rewardId"], 5001);
+        assert_eq!(episodes[0]["rewards"]["entries"][0]["rewardQuantity"], 2);
+        let training = &entry["training"];
+        assert_eq!(training["situationId"], 5);
+        assert_eq!(training["level"], 3);
+        assert_eq!(training["rewards"]["entries"][0]["rewardType"], "item");
     }
 
     #[test]

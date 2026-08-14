@@ -127,7 +127,8 @@ fn to_cipher_bytes(raw: &str, label: &str) -> Result<Vec<u8>, ConfigError> {
 impl Config {
     /// Builds the configuration from environment variables, including `.env`.
     pub fn from_env() -> Result<Self, ConfigError> {
-        // Load `.env.local`, then `.env`, then `.env.example`.
+        // Load `.env.local` first so it takes precedence, then `.env`.
+        // `.env.example` is not loaded because it holds only placeholders.
         let _ = dotenvy::from_path(".env.local");
         dotenvy::from_path(".env").ok();
 
